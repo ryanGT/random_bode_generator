@@ -257,12 +257,7 @@ def calc_mag_and_phase(G, f):
     return db, phase
 
 
-
-def plot_bode(G, f=None):
-    if f is None:
-        f = np.logspace(-4,3,1000)
-    db, phase = calc_mag_and_phase(G,f)
-    
+def plot_bode(f, db, phase):
     plt.figure()
     plt.subplot(211)
     plt.semilogx(f,db)
@@ -279,7 +274,14 @@ def plot_bode(G, f=None):
     set_log_ticks(ax)
     set_phase_ticks(ax, phase)
     mygrid(ax)
+    
 
+
+def plot_bode_for_TF(G, f=None):
+    if f is None:
+        f = np.logspace(-4,3,1000)
+    db, phase = calc_mag_and_phase(G,f)
+    plot_bode(f, db, phase)
 
 
 
@@ -335,3 +337,13 @@ def save_bode_to_csv(G, f=None, basename="bode_id"):
     fn = get_csv_filename(basename)
     np.savetxt(fn, data,  delimiter=',', header=header)
     return fn
+
+
+# need a load from csv feature
+def plot_bode_from_csv(fn):
+    data = np.loadtxt(fn, delimiter=',')
+    f = data[:,0]
+    db = data[:,1]
+    phase = datea[:,2]
+    plot_bode(f, db, phase)
+                      
