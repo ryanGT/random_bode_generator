@@ -2,12 +2,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import pi
 import control
-import os, datetime
+import os, datetime, glob
 rand = np.random.rand
 import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
-__version__ = "1.1.1"
+__version__ = "1.1.3"
 
 def assign_poles_to_bins(max_poles=5, bins=5):
     """Assign poles to frequency bins.  Each bin is assigned
@@ -317,7 +317,9 @@ def get_csv_filename(basename="bode_id"):
     for i in range(1,1000):
         pat = base2 % i
         pat += '*.csv'
-        if not os.path.exists(pat):
+        matches = glob.glob(pat)
+        print('pat = %s' % pat)
+        if len(matches) == 0:
             break
 
     base_out = basename + '_%0.3i' % i
@@ -345,6 +347,6 @@ def plot_bode_from_csv(fn):
     data = np.loadtxt(fn, delimiter=',')
     f = data[:,0]
     db = data[:,1]
-    phase = datea[:,2]
+    phase = data[:,2]
     plot_bode(f, db, phase)
                       
