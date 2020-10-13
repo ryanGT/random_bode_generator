@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import pi
 import control
+import os, datetime
 rand = np.random.rand
 import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
@@ -244,11 +245,7 @@ def fix_phase(phase):
 
 
 
-
-
-def plot_bode(G, f=None):
-    if f is None:
-        f = np.logspace(-4,3,1000)
+def calc_mag_and_phase(G, f):
     w = 2.0*np.pi*f
     s = 1.0j*w
     Gjw = G(s)
@@ -257,6 +254,14 @@ def plot_bode(G, f=None):
     phase_rad = np.unwrap(phase_rad)
     phase = phase_rad*180.0/np.pi
     phase = fix_phase(phase)
+    return db, phase
+
+
+
+def plot_bode(G, f=None):
+    if f is None:
+        f = np.logspace(-4,3,1000)
+    db, phase = calc_mag_and_phase(G,f)
     
     plt.figure()
     plt.subplot(211)
@@ -302,3 +307,31 @@ def preserve_G(G):
     print(denstr)
     print(Gstr)
 
+
+def get_csv_filename(basename="bode_id"):
+    base2 = basename + '_%0.3i'
+    # find unused file name/number
+    for i in range(1,1000):
+        pat = base2 % i
+        pat += '*.csv'
+        if not os.path.exists(pat):
+            break
+
+    base_out = basename + '_%0.3i' % i
+    fmt = '_%d_%m_%Y_%I_%M%P'
+    now = datetime.datetime.now()
+    time_stamp = now.strftime(fmt) 
+    fn = base_out + time_stamp + '.csv'
+    return fn
+    
+
+def save_bode_to_csv(G, f=None, basename="bode_id"):
+    if f is None:
+        f = np.logspace(-4,3,1000)
+    db, phase = calc_mag_and_phase(G,f)
+    data = np.column_stack([f,db,phase])
+    header = '#Freq. (Hz.), dB Mag., Phase (deg.)'
+    # need safe file name
+    fn = get_csv_filename(basename)
+    np.savetxt(fn, data,  delimiter=',', header=header)
+    return fn
