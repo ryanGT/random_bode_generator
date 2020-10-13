@@ -7,6 +7,7 @@ rand = np.random.rand
 import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
+__version__ = "1.1"
 
 def assign_poles_to_bins(max_poles=5, bins=5):
     """Assign poles to frequency bins.  Each bin is assigned
@@ -318,7 +319,7 @@ def get_csv_filename(basename="bode_id"):
             break
 
     base_out = basename + '_%0.3i' % i
-    fmt = '_%d_%m_%Y_%I_%M%P'
+    fmt = '_%m_%d_%Y_%I_%M%P'
     now = datetime.datetime.now()
     time_stamp = now.strftime(fmt) 
     fn = base_out + time_stamp + '.csv'
