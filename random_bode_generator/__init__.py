@@ -7,7 +7,7 @@ rand = np.random.rand
 import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
-__version__ = "1.1.3"
+__version__ = "1.1.9"
 
 def assign_poles_to_bins(max_poles=5, bins=5):
     """Assign poles to frequency bins.  Each bin is assigned
@@ -258,31 +258,43 @@ def calc_mag_and_phase(G, f):
     return db, phase
 
 
-def plot_bode(f, db, phase):
-    plt.figure()
-    plt.subplot(211)
-    plt.semilogx(f,db)
-    plt.ylabel('dB Mag.')
-    ax = plt.gca()
-    set_log_ticks(ax,nullx=True)
-    set_db_ticks(ax, db)
-    mygrid(ax)
-    plt.subplot(212)
-    plt.semilogx(f,phase)
-    plt.ylabel('Phase (deg.)')
-    plt.xlabel('Freq. (Hz)')
-    ax = plt.gca()
-    set_log_ticks(ax)
-    set_phase_ticks(ax, phase)
-    mygrid(ax)
+def plot_bode(f, db, phase, clear=True, freqlim=None):
+    if clear:
+        fig = plt.figure()
+        ax1 = fig.add_subplot(211)
+        ax2 = fig.add_subplot(212)
+    else:
+        fig = plt.gcf()
+        try:
+            ax1 = fig.axes[0]
+            ax2 = fig.axes[1]
+        except:
+            ax1 = fig.add_subplot(211)
+            ax2 = fig.add_subplot(212)
+        
+    ax1.semilogx(f,db)
+    ax1.set_ylabel('dB Mag.')
+    set_log_ticks(ax1,nullx=True)
+    set_db_ticks(ax1, db)
+    mygrid(ax1)
+    if freqlim is not None:
+        ax1.set_xlim(freqlim)
+    ax2.semilogx(f,phase)
+    ax2.set_ylabel('Phase (deg.)')
+    ax2.set_xlabel('Freq. (Hz)')
+    set_log_ticks(ax2)
+    set_phase_ticks(ax2, phase)
+    mygrid(ax2)
+    if freqlim is not None:
+        ax2.set_xlim(freqlim)
     
 
 
-def plot_bode_for_TF(G, f=None):
+def plot_bode_for_TF(G, f=None, clear=True, freqlim=None):
     if f is None:
         f = np.logspace(-4,3,1000)
     db, phase = calc_mag_and_phase(G,f)
-    plot_bode(f, db, phase)
+    plot_bode(f, db, phase, clear=clear, freqlim=freqlim)
 
 
 
@@ -323,7 +335,7 @@ def get_csv_filename(basename="bode_id"):
             break
 
     base_out = basename + '_%0.3i' % i
-    fmt = '_%m_%d_%Y_%I_%M%P'
+    fmt = '_%m_%d_%Y_%I_%M%p'
     now = datetime.datetime.now()
     time_stamp = now.strftime(fmt) 
     fn = base_out + time_stamp + '.csv'
