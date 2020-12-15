@@ -7,7 +7,7 @@ rand = np.random.rand
 import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
-__version__ = "1.1.9"
+__version__ = "1.1.10"
 
 def assign_poles_to_bins(max_poles=5, bins=5):
     """Assign poles to frequency bins.  Each bin is assigned
@@ -258,7 +258,8 @@ def calc_mag_and_phase(G, f):
     return db, phase
 
 
-def plot_bode(f, db, phase, clear=True, freqlim=None):
+def plot_bode(f, db, phase, clear=True, freqlim=None, plot_str='-', \
+              **plot_args):
     if clear:
         fig = plt.figure()
         ax1 = fig.add_subplot(211)
@@ -272,29 +273,42 @@ def plot_bode(f, db, phase, clear=True, freqlim=None):
             ax1 = fig.add_subplot(211)
             ax2 = fig.add_subplot(212)
         
-    ax1.semilogx(f,db)
+    ax1.semilogx(f,db, plot_str, **plot_args)
     ax1.set_ylabel('dB Mag.')
     set_log_ticks(ax1,nullx=True)
-    set_db_ticks(ax1, db)
+    if len(db) > 1:# ignore if just plotting one point
+        set_db_ticks(ax1, db)
     mygrid(ax1)
     if freqlim is not None:
         ax1.set_xlim(freqlim)
-    ax2.semilogx(f,phase)
+    ax2.semilogx(f, phase, plot_str, **plot_args)
     ax2.set_ylabel('Phase (deg.)')
     ax2.set_xlabel('Freq. (Hz)')
     set_log_ticks(ax2)
-    set_phase_ticks(ax2, phase)
+    if len(phase) > 1:
+        set_phase_ticks(ax2, phase)
     mygrid(ax2)
     if freqlim is not None:
         ax2.set_xlim(freqlim)
     
 
+def plot_vline_bode(fig, freq, plot_str='k--', **plot_args):
+    ax1 = fig.axes[0]
+    ax2 = fig.axes[1]
+    dblims = ax1.get_ylim()
+    phaselims = ax2.get_ylim()
+    freq_v = [freq,freq]
+    ax1.plot(freq_v, dblims, plot_str, **plot_args)
+    ax2.plot(freq_v, phaselims, plot_str, **plot_args)
+    
 
-def plot_bode_for_TF(G, f=None, clear=True, freqlim=None):
+def plot_bode_for_TF(G, f=None, clear=True, freqlim=None, plot_str='-', \
+              **plot_args):
     if f is None:
         f = np.logspace(-4,3,1000)
     db, phase = calc_mag_and_phase(G,f)
-    plot_bode(f, db, phase, clear=clear, freqlim=freqlim)
+    plot_bode(f, db, phase, clear=clear, freqlim=freqlim, \
+              plot_str=plot_str, **plot_args)
 
 
 
@@ -355,10 +369,10 @@ def save_bode_to_csv(G, f=None, basename="bode_id"):
 
 
 # need a load from csv feature
-def plot_bode_from_csv(fn):
+def plot_bode_from_csv(fn, plot_str='-', **plot_args):
     data = np.loadtxt(fn, delimiter=',')
     f = data[:,0]
     db = data[:,1]
     phase = data[:,2]
-    plot_bode(f, db, phase)
+    plot_bode(f, db, phase, plot_str=plot_str, **plot_args)
                       
