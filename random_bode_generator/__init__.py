@@ -6,8 +6,9 @@ import os, datetime, glob
 rand = np.random.rand
 import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+import bode_utils
 
-__version__ = "1.1.10"
+__version__ = "1.2.0"
 
 def assign_poles_to_bins(max_poles=5, bins=5):
     """Assign poles to frequency bins.  Each bin is assigned
@@ -32,6 +33,30 @@ def assign_poles_to_bins(max_poles=5, bins=5):
             elif r > 0.3:
                 poles[i] = 1
         
+    return poles
+
+
+def assign_first_order_poles_to_bins(max_poles=5, bins=5):
+    """Assign poles to frequency bins.  Each bin is assigned
+    0,1, or 2 poles until max_poles is reached."""
+    poles = [0]*bins
+
+    for i in range(bins):
+        num_poles = np.sum(poles)
+        max_remaining = max_poles-num_poles
+        if max_remaining <= 0:
+            break
+        elif max_remaining == 1:
+            # the current bin can have 0 or 1 poles
+            r = rand()
+            if r > 0.6:
+                poles[i] = 1
+        elif max_remaining > 1:
+            # current bin can have 0, 1, or 2 poles
+            r = rand()
+            if r > 0.6:
+                poles[i] = 1
+
     return poles
 
 
@@ -66,7 +91,37 @@ def assign_zeros_to_bins(poles, max_zeros=None):
                 zeros[i] = 1
         
     return zeros
-    
+
+
+def assign_first_order_zeros_to_bins(poles, max_zeros=None):
+    n = np.sum(poles)
+    m = n-1
+    if (max_zeros is None) or (max_zeros>m):
+        max_zeros = m
+    bins = len(poles)
+    zeros = [0]*bins
+
+    for i, p_i in enumerate(poles):
+        num_zeros = np.sum(zeros)
+        max_remaining = max_zeros-num_zeros
+        if p_i > 0:
+            # no zeros in this bin 
+            continue
+        if max_remaining <= 0:
+            break
+        elif max_remaining == 1:
+            # the current bin can have 0 or 1 poles
+            r = rand()
+            if r > 0.6:
+                zeros[i] = 1
+        elif max_remaining > 1:
+            # current bin can have 0, 1, or 2 poles
+            r = rand()
+            if r > 0.6:
+                zeros[i] = 1
+
+    return zeros
+
 
 def random_log_freq(low_exponent):
     """Generate a random frequency on the range 10**low_exponent -
@@ -144,13 +199,29 @@ def zero_bins_to_num(zeros):
 
 
 
-def random_Bode_TF(max_poles=5, max_zeros=None):
+def random_Bode_TF(max_poles=5, max_zeros=None, allow_second_order=True):
+    if not allow_second_order:
+        G = random_TF_first_order_only(max_poles=max_poles, max_zeros=max_zeros)
+        return G
     plist = assign_poles_to_bins(max_poles=max_poles)
     while not np.any(plist):
         # We will not allow a TF that has no poles
         plist = assign_poles_to_bins(max_poles=max_poles)
     
     zlist = assign_zeros_to_bins(plist, max_zeros=max_zeros)
+    den = pole_bins_to_den(plist)
+    num = zero_bins_to_num(zlist)
+    G = control.TransferFunction(num,den)
+    return G
+
+
+def random_TF_first_order_only(max_poles=5, max_zeros=None):
+    plist = assign_first_order_poles_to_bins(max_poles=max_poles)
+    while not np.any(plist):
+        # We will not allow a TF that has no poles
+        plist = assign_poles_to_bins(max_poles=max_poles)
+
+    zlist = assign_first_order_zeros_to_bins(plist, max_zeros=max_zeros)
     den = pole_bins_to_den(plist)
     num = zero_bins_to_num(zlist)
     G = control.TransferFunction(num,den)
@@ -173,12 +244,8 @@ def set_log_ticks(ax,nullx=False):
 
 
 
-
-
 def mygrid(ax):
     ax.grid(1, which="both",ls=":", color='0.75')
-
-
 
 
 
@@ -206,8 +273,6 @@ def set_db_ticks(ax, db):
 
     ax.yaxis.set_major_locator(majorLocator)
     ax.yaxis.set_major_formatter(majorFormatter)
-
-
 
 
 
@@ -260,38 +325,45 @@ def calc_mag_and_phase(G, f):
 
 def plot_bode(f, db, phase, clear=True, freqlim=None, plot_str='-', \
               **plot_args):
-    if clear:
-        fig = plt.figure()
-        ax1 = fig.add_subplot(211)
-        ax2 = fig.add_subplot(212)
-    else:
-        fig = plt.gcf()
-        try:
-            ax1 = fig.axes[0]
-            ax2 = fig.axes[1]
-        except:
-            ax1 = fig.add_subplot(211)
-            ax2 = fig.add_subplot(212)
+    bode_utils.bode_plot(f, db, phase, xlim=freqlim, \
+                         fmt=plot_str, **plot_args)
+    ## if clear:
+    ##     fig = plt.figure()
+    ##     ax1 = fig.add_subplot(211)
+    ##     ax2 = fig.add_subplot(212)
+    ## else:
+    ##     fig = plt.gcf()
+    ##     try:
+    ##         ax1 = fig.axes[0]
+    ##         ax2 = fig.axes[1]
+    ##     except:
+    ##         ax1 = fig.add_subplot(211)
+    ##         ax2 = fig.add_subplot(212)
         
-    ax1.semilogx(f,db, plot_str, **plot_args)
-    ax1.set_ylabel('dB Mag.')
-    set_log_ticks(ax1,nullx=True)
-    if len(db) > 1:# ignore if just plotting one point
-        set_db_ticks(ax1, db)
-    mygrid(ax1)
-    if freqlim is not None:
-        ax1.set_xlim(freqlim)
-    ax2.semilogx(f, phase, plot_str, **plot_args)
-    ax2.set_ylabel('Phase (deg.)')
-    ax2.set_xlabel('Freq. (Hz)')
-    set_log_ticks(ax2)
-    if len(phase) > 1:
-        set_phase_ticks(ax2, phase)
-    mygrid(ax2)
-    if freqlim is not None:
-        ax2.set_xlim(freqlim)
+    ## ax1.semilogx(f,db, plot_str, **plot_args)
+    ## ax1.set_ylabel('dB Mag.')
+    ## set_log_ticks(ax1,nullx=True)
+    ## if len(db) > 1:# ignore if just plotting one point
+    ##     set_db_ticks(ax1, db)
+    ## mygrid(ax1)
+    ## if freqlim is not None:
+    ##     ax1.set_xlim(freqlim)
+    ## ax2.semilogx(f, phase, plot_str, **plot_args)
+    ## ax2.set_ylabel('Phase (deg.)')
+    ## ax2.set_xlabel('Freq. (Hz)')
+    ## set_log_ticks(ax2)
+    ## if len(phase) > 1:
+    ##     set_phase_ticks(ax2, phase)
+    ## mygrid(ax2)
+    ## if freqlim is not None:
+    ##     ax2.set_xlim(freqlim)
+
     
 
+def bode_plot(*args, **kwargs):
+    plot_bode(*args, **kwargs)
+
+                  
 def plot_vline_bode(fig, freq, plot_str='k--', **plot_args):
     ax1 = fig.axes[0]
     ax2 = fig.axes[1]
