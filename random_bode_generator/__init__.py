@@ -8,7 +8,7 @@ import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 import bode_utils
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 def assign_poles_to_bins(max_poles=5, bins=5):
     """Assign poles to frequency bins.  Each bin is assigned
@@ -325,7 +325,7 @@ def calc_mag_and_phase(G, f):
 
 def plot_bode(f, db, phase, clear=True, freqlim=None, plot_str='-', \
               **plot_args):
-    bode_utils.bode_plot(f, db, phase, xlim=freqlim, \
+    bode_utils.bode_plot(f, db, phase, clear=clear, xlim=freqlim, \
                          fmt=plot_str, **plot_args)
     ## if clear:
     ##     fig = plt.figure()

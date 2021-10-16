@@ -5,7 +5,7 @@ import setuptools
 
 setuptools.setup(
     name='random_bode_generator',    # This is the name of your PyPI-package.
-    version='1.2.0',
+    version='1.2.1',
     url='https://github.com/ryanGT/random_bode_generator',
     author='Ryan Krauss',
     author_email='ryanwkrauss@gmail.com',
