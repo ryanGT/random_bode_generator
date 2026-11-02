@@ -7,13 +7,15 @@ rand = np.random.rand
 import matplotlib.ticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 import bode_utils
+import copy
 
-__version__ = "1.2.1"
+__version__ = "1.3.3"
 
 def assign_poles_to_bins(max_poles=5, bins=5):
     """Assign poles to frequency bins.  Each bin is assigned
     0,1, or 2 poles until max_poles is reached."""
     poles = [0]*bins
+    #print("in assign_poles_to_bins")
     
     for i in range(bins):
         num_poles = np.sum(poles)
@@ -32,6 +34,15 @@ def assign_poles_to_bins(max_poles=5, bins=5):
                 poles[i] = 2
             elif r > 0.3:
                 poles[i] = 1
+        ## it feels like we get too many pure ints or pure diff
+        ## so I am adding an option to zero out the poles in bin 0
+        if i == 0:
+            r2 = rand()
+            #print("r2 = %0.4g" % r2)
+            if r2 < 0.6:
+                #print("no ints for you")
+                poles[i] = 0
+
         
     return poles
 
@@ -89,7 +100,14 @@ def assign_zeros_to_bins(poles, max_zeros=None):
                 zeros[i] = 2
             elif r > 0.3:
                 zeros[i] = 1
-        
+        ## it feels like we get too many pure ints or pure diff
+        ## so I am adding an option to zero out the poles in bin 0
+        if i == 0:
+            r2 = rand()
+            if r2 < 0.6:
+                zeros[i] = 0
+
+ 
     return zeros
 
 
@@ -319,7 +337,15 @@ def calc_mag_and_phase(G, f):
     phase_rad = np.angle(Gjw)
     phase_rad = np.unwrap(phase_rad)
     phase = phase_rad*180.0/np.pi
-    phase = fix_phase(phase)
+    n = len(G.poles())
+    m = len(G.zeros())
+    end_phase = -90*(n-m)
+    phase_diff = end_phase - phase[-1]
+    if phase_diff > 300:
+        phase += 360
+    elif phase_diff < -300:
+        phase -= 360
+    #phase = fix_phase(phase)
     return db, phase
 
 
@@ -448,3 +474,64 @@ def plot_bode_from_csv(fn, plot_str='-', **plot_args):
     phase = data[:,2]
     plot_bode(f, db, phase, plot_str=plot_str, **plot_args)
                       
+
+
+
+class bode_guessing_game(object):
+    def __init__(self, G=None, freq_tol=0.3, zeta_tol=0.2, imag_tol=1e-7):
+        if G is None:
+            G = random_Bode_TF()
+        self.G_in = G
+        self.G_guess = None
+        self.freq_tol = freq_tol
+        self.zete_tol = zeta_tol
+        self.imag_tol = imag_tol
+        self.poles_in = self.G_in.poles()
+        self.zeros_in = self.G_in.zeros()
+        self.first_order_poles = [p for p in self.poles_in \
+                                  if np.abs(np.imag(p)) < self.imag_tol]
+        self.second_order_poles = [p for p in self.poles_in \
+                                  if np.abs(np.imag(p)) > self.imag_tol]
+        self.remaining_first_order_poles = copy.copy(self.first_order_poles)
+        self.remaining_second_order_poles = copy.copy(self.second_order_poles)
+        self.found_first_order_poles = []
+        self.found_second_order_zeros = []
+        self.found_zeros = []
+
+
+    def guess_first_order_pole(self, f, Hz=True):
+        p = -2*pi*f
+        # - how do I decide if p is close enough to be a match for a pole in 
+        #   G_in?
+        #   - I could check percentage errors and see if any are less than
+        #     freq_tol, but this won't work for pure int
+        #   - I probably need a special case for pure int
+        #   - how do I handle double pure int?
+        match = False
+        if f == 0 and f in self.first_order_poles:
+            match = True
+            ind = self.remaining_first_order_poles.index(0)
+        else:
+            myarray = np.abs(np.array(self.remaining_first_order_poles))
+            mydiff = np.abs(myarray - np.abs(p))
+            tol_array = self.freq_tol*myarray
+            mybool = mydiff < tol_array           
+            if np.any(mybool):
+                match = True
+                print("mybool: %s" % mybool)
+                mysum = np.sum(mybool)
+                print("sum: %s" % mysum)
+                N = len(self.remaining_first_order_poles)
+                nvect = np.arange(N)
+                inds = nvect[mybool]
+                assert len(inds) == 1, "did not find exactly one match: inds = %s" % inds
+                ind = inds[0]
+                mymatch = self.remaining_first_order_poles[ind]
+                print("mymatch: %s" % mymatch)
+            else:
+                print("mydiff: %s" % mydiff)
+                print("myarray: %s" % myarray)
+                print("other part: %s" % tol_array)
+            
+
+
